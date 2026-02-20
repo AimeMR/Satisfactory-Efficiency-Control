@@ -1,23 +1,20 @@
-﻿using System.Text;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+﻿using System.Windows;
+using SatisfactoryManagerApp.ViewModels;
 
-namespace SatisfactoryManagerApp;
-
-/// <summary>
-/// Interaction logic for MainWindow.xaml
-/// </summary>
-public partial class MainWindow : Window
+namespace SatisfactoryManagerApp
 {
-    public MainWindow()
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml.
+    /// Wires the EditorViewModel as DataContext.
+    /// Connection lifecycle (create/remove) is handled via Nodify's
+    /// ConnectionCompletedCommand and RemoveConnectionCommand bound in XAML.
+    /// </summary>
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
+        public MainWindow()
+        {
+            InitializeComponent();
+            DataContext = new EditorViewModel();
+        }
     }
 }

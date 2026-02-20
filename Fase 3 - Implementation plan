@@ -1,0 +1,64 @@
+# Fase 3 — Frontend WPF: Walkthrough
+
+## Qué se implementó
+
+### Dependencia
+- **Nodify 7.1.0** añadido al [.csproj](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/SatisfactoryManagerApp.csproj) → canvas interactivo paneable + zoomeable listo.
+
+### Nuevos archivos
+
+| Archivo | Rol |
+|---|---|
+| [ViewModels/ViewModelBase.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/ViewModelBase.cs) | Base INPC con `SetField<T>` |
+| [ViewModels/RelayCommand.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/RelayCommand.cs) | `RelayCommand` + `RelayCommand<T>` |
+| [ViewModels/PortViewModel.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/PortViewModel.cs) | Wrapper observable de `InputPort`/`OutputPort` |
+| [ViewModels/ConnectionViewModel.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/ConnectionViewModel.cs) | Wrapper de `ConnectionModel`, expone `UsageRatio`, `IsBottleneck` |
+| [ViewModels/NodeViewModel.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/NodeViewModel.cs) | Wrapper de `NodeModel`, expone `Location`, `Efficiency`, `NodeType` |
+| [ViewModels/EditorViewModel.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/EditorViewModel.cs) | Root VM: navegación jerárquica, `FlowCalculator`, comandos Nodify |
+| [Converters/FlowConverters.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/Converters/FlowConverters.cs) | `FlowColorConverter` (verde/naranja/rojo), `FlowToBoolConverter` |
+| [Views/NodeTemplates.xaml](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/Views/NodeTemplates.xaml) | `DataTemplate`s para Machine, Group, Splitter/Merger |
+
+### Archivos modificados
+
+| Archivo | Cambio |
+|---|---|
+| [MainWindow.xaml](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/MainWindow.xaml) | Toolbar + breadcrumb + `NodifyEditor` con bindings |
+| [MainWindow.xaml.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/MainWindow.xaml.cs) | Solo `DataContext = new EditorViewModel()` |
+| [SatisfactoryManagerApp.csproj](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/SatisfactoryManagerApp.csproj) | `PackageReference` de Nodify |
+
+---
+
+## Arquitectura MVVM
+
+```mermaid
+graph LR
+    MW["MainWindow.xaml"] -->|DataContext| EVM["EditorViewModel"]
+    EVM -->|ItemsSource| NVM["NodeViewModel[]"]
+    EVM -->|Connections| CVM["ConnectionViewModel[]"]
+    NVM -->|Inputs/Outputs| PVM["PortViewModel"]
+    CVM -->|Source/Target| PVM
+    EVM -->|Calculate| FC["FlowCalculator"]
+    FC -->|updates| NM["NodeModel / ConnectionModel"]
+    NM -->|Sync()| NVM
+    NM -->|Sync()| CVM
+```
+
+## Correcciones de API Nodify 7
+
+| Propiedad incorrecta | Propiedad correcta |
+|---|---|
+| `CornerRadius` en `nodify:Node` | No existe — usar `Border` envolvente |
+| `GridLineSize` en `NodifyEditor` | `GridCellSize` |
+| `ConnectionCreated` evento | `ConnectionCompletedCommand` (ICommand) |
+| `ConnectionRemoved` evento | `RemoveConnectionCommand` (ICommand) |
+| `Anchor` en `NodeInput` | Gestionado internamente por Nodify, no bindeable |
+
+--- 
+
+## Verificación
+
+```
+dotnet build SatisfactoryManagerApp/SatisfactoryManagerApp.csproj
+```
+
+**Resultado:** `Compilación correcta. 0 Errores. 0 Advertencias.` ✅

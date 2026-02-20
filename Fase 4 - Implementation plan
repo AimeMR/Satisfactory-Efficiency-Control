@@ -1,0 +1,147 @@
+# Fase 4 — Funcionalidad de Profundidad (Sub-fábricas)
+
+## Descripción
+
+Permite al usuario "entrar" dentro de un `FactoryGroupNode` con doble clic para ver y editar
+sus nodos hijos, y volver al nivel anterior con un botón "Volver". La jerarquía puede ser
+arbitrariamente profunda. La barra de navegación superior ("breadcrumb") siempre muestra la
+ruta exacta de niveles.
+
+---
+
+## Estado actual — ¿Qué ya está hecho?
+
+| Requisito | Estado | Dónde está |
+|---|---|---|
+| `FactoryGroupNode.Children` (lista de hijos) | ✅ Ya existe | `Graph/Nodes/FactoryGroupNode.cs` |
+| `FactoryGroupNode.AddChild()` / `RemoveChild()` | ✅ Ya existe | `Graph/Nodes/FactoryGroupNode.cs` |
+| `EditorViewModel._navigationStack` | ✅ Ya existe | `ViewModels/EditorViewModel.cs` |
+| `EnterGroupCommand` (doble clic → empuja al stack) | ✅ Ya existe | `ViewModels/EditorViewModel.cs` |
+| `GoBackCommand` (pop del stack) | ✅ Ya existe | `ViewModels/EditorViewModel.cs` |
+| `BreadcrumbPath` (string calculado del stack) | ✅ Ya existe | `ViewModels/EditorViewModel.cs` |
+| `RefreshVisibleLevel()` (reconstruye Nodes/Connections al cambiar nivel) | ✅ Ya existe | `ViewModels/EditorViewModel.cs` |
+| Botón "Entrar al grupo" en `GroupNodeTemplate` | ✅ Ya existe | `Views/NodeTemplates.xaml` |
+| Barra breadcrumb + botón "Volver" en `MainWindow.xaml` | ✅ Ya existe | `MainWindow.xaml` |
+
+> **Conclusión:** La lógica central de navegación está **completamente implementada** desde la Fase 3.
+> La Fase 4 se centra en pulir la experiencia de usuario y conectar el doble clic nativo de Nodify.
+
+---
+
+## Cambios pendientes
+
+### 1 — Doble clic nativo en el `ItemContainer` de Nodify
+
+El botón "Entrar al grupo" funciona, pero el requisito pide también poder hacer **doble clic
+directamente sobre el nodo** en el canvas (comportamiento estándar de editores de nodos).
+
+**Solución:** Agregar un `Style.Trigger` en el `ItemContainerStyle` de `MainWindow.xaml` que
+capture el evento `MouseDoubleClick` y ejecute `EnterGroupCommand` cuando el nodo es de tipo
+`Group`.
+
+#### [MODIFY] [MainWindow.xaml](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/MainWindow.xaml)
+
+```xml
+<!-- En ItemContainerStyle, añadir el trigger de doble clic: -->
+<Style TargetType="{x:Type nodify:ItemContainer}">
+    <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}"/>
+    <EventSetter Event="MouseDoubleClick"
+                 Handler="ItemContainer_MouseDoubleClick"/>
+</Style>
+```
+
+Y en el code-behind (`MainWindow.xaml.cs`):
+
+```csharp
+private void ItemContainer_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+{
+    if (sender is FrameworkElement { DataContext: NodeViewModel nvm }
+        && DataContext is EditorViewModel vm)
+    {
+        if (vm.EnterGroupCommand.CanExecute(nvm))
+            vm.EnterGroupCommand.Execute(nvm);
+    }
+}
+```
+
+---
+
+### 2 — Animación / feedback visual al cambiar de nivel
+
+Al entrar/salir del grupo, la transición es instantánea. Mejorar UX añadiendo:
+- `NodifyEditor.ViewportLocation` se resetea al centro al entrar en un grupo (para no quedar
+  desorientado en un canvas vacío).
+
+#### [MODIFY] [EditorViewModel.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/EditorViewModel.cs)
+
+Exponer una propiedad `ViewportLocation` (bindeable al editor) que se resetea a `(0,0)` en
+cada cambio de nivel:
+
+```csharp
+private Point _viewportLocation;
+public Point ViewportLocation
+{
+    get => _viewportLocation;
+    set => SetField(ref _viewportLocation, value);
+}
+
+// Al final de RefreshVisibleLevel():
+ViewportLocation = new Point(0, 0);
+```
+
+Y en `MainWindow.xaml`:
+```xml
+<nodify:NodifyEditor ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}" .../>
+```
+
+---
+
+### 3 — Indicador visual de profundidad en el breadcrumb
+
+El breadcrumb actual es un `TextBlock` plano. Mejorarlo con un `ItemsControl` que genere
+un estilo "ruta clickeable" donde cada segmento sea un botón que navega directamente a ese
+nivel (navegar varios niveles atrás de golpe).
+
+#### [MODIFY] [EditorViewModel.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/EditorViewModel.cs)
+
+```csharp
+// Exponer la pila como colección observable para el breadcrumb clickeable
+public ObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = new();
+
+// Actualizar en UpdateBreadcrumb():
+BreadcrumbItems.Clear();
+BreadcrumbItems.Add(new BreadcrumbItem("Fábrica principal", null));
+foreach (var group in _navigationStack.Reverse())
+    BreadcrumbItems.Add(new BreadcrumbItem(group.Name, group));
+```
+
+#### [NEW] [BreadcrumbItem.cs](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/ViewModels/BreadcrumbItem.cs)
+
+```csharp
+public record BreadcrumbItem(string Label, FactoryGroupNode? Group);
+```
+
+#### [MODIFY] [MainWindow.xaml](file:///c:/Automatizacion/Satisfactory-Efficiency-Control/SatisfactoryManagerApp/MainWindow.xaml)
+
+Reemplazar el `TextBlock` de breadcrumb con un `ItemsControl` que renderice cada ítem
+como un `HyperlinkButton` que ejecute un `GoToLevelCommand(group)`.
+
+---
+
+## Orden de implementación
+
+1. **[Primero]** Doble clic en `ItemContainer` → entrada inmediata al grupo (máximo impacto, mínimo esfuerzo).
+2. **[Segundo]** Reset de viewport al cambiar de nivel (`ViewportLocation` binding).
+3. **[Tercero]** Breadcrumb clickeable (mejora UX, más complejo).
+
+---
+
+## Verificación
+
+| Escenario | Resultado esperado |
+|---|---|
+| Doble clic sobre `FactoryGroupNode` | Canvas muestra los nodos hijos + breadcrumb actualizado |
+| Doble clic sobre `MachineNode` | Sin efecto (comando no ejecuta) |
+| Clic en "Volver" | Vuelve al nivel anterior, breadcrumb encoge |
+| Profundidad 3+ niveles | Stack crece/decrece correctamente |
+| Añadir máquina dentro de un grupo | Nodo pertenece al grupo, no aparece en el nivel raíz |
