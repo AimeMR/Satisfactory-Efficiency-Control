@@ -434,3 +434,6 @@ FodyWeavers.xsd
 
 # Mac OS specific files (if someone clones it on a Mac)
 .DS_Store
+
+# Agent specific files
+.agent/

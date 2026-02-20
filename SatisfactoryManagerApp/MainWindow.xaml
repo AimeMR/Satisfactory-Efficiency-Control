@@ -5,7 +5,7 @@
         xmlns:vm="clr-namespace:SatisfactoryManagerApp.ViewModels"
         xmlns:conv="clr-namespace:SatisfactoryManagerApp.Converters"
         Title="Satisfactory Efficiency Manager"
-        Height="800" Width="1280"
+        Height="800" Width="1400"
         Background="#12121F"
         WindowStartupLocation="CenterScreen">
 
@@ -68,6 +68,41 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
+
+            <!-- ── Sidebar machine list item ── -->
+            <Style x:Key="LibraryItemStyle" TargetType="ListBoxItem">
+                <Setter Property="Background"    Value="Transparent"/>
+                <Setter Property="Foreground"    Value="#D0D0E8"/>
+                <Setter Property="Padding"       Value="10,6"/>
+                <Setter Property="Cursor"        Value="Hand"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="#2A2A45" BorderThickness="0,0,0,1"
+                                    Padding="{TemplateBinding Padding}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="⚙ " FontSize="11" Foreground="#FF6A00"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding MachineName}"
+                                               FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#1E1E38"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#2A2A55"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
         </ResourceDictionary>
     </Window.Resources>
 
@@ -77,9 +112,15 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <!-- Sidebar -->
+            <ColumnDefinition x:Name="SidebarColumn" Width="Auto"/>
+            <!-- Canvas -->
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
         <!-- ═══════════════════════════ TOOLBAR ════════════════════════════ -->
-        <Border Grid.Row="0" Background="#1E1E2E" Padding="10,6">
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="#1E1E2E" Padding="10,6">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="⚙ Satisfactory Manager"
                            Foreground="#FF6A00" FontSize="15" FontWeight="Bold"
@@ -89,22 +130,26 @@
                 <Button Content="＋ Grupo"    Command="{Binding AddGroupCommand}"
                         Style="{StaticResource ToolbarButton}" Margin="0,0,8,0"/>
                 <Button Content="⟳ Recalcular" Command="{Binding RecalculateCommand}"
-                        Style="{StaticResource AccentButton}"/>
+                        Style="{StaticResource AccentButton}" Margin="0,0,24,0"/>
+
+                <Separator Background="#2A2A45" Margin="0,2,8,2"/>
+
+                <Button Content="💾 Guardar" Command="{Binding SaveProjectCommand}"
+                        Style="{StaticResource ToolbarButton}" Margin="0,0,8,0"/>
+                <Button Content="📂 Cargar"  Command="{Binding LoadProjectCommand}"
+                        Style="{StaticResource ToolbarButton}"/>
             </StackPanel>
         </Border>
 
         <!-- ══════════════════════════ BREADCRUMB ═══════════════════════════ -->
-        <Border Grid.Row="1" Background="#161625" Padding="10,4"
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#161625" Padding="10,4"
                 BorderBrush="#2A2A45" BorderThickness="0,0,0,1">
             <DockPanel>
-                <!-- Back button (one level) -->
                 <Button DockPanel.Dock="Right"
                         Content="◄ Volver"
                         Command="{Binding GoBackCommand}"
                         Style="{StaticResource BackButton}"
                         Margin="8,0,0,0"/>
-
-                <!-- Clickable breadcrumb: each segment navigates directly to that level -->
                 <ItemsControl ItemsSource="{Binding BreadcrumbItems}" VerticalAlignment="Center">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -114,7 +159,6 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:BreadcrumbItem}">
                             <StackPanel Orientation="Horizontal">
-                                <!-- Separator › (hidden before first item via PreviousData trick) -->
                                 <TextBlock Text=" › " Foreground="#555577" FontSize="12"
                                            VerticalAlignment="Center">
                                     <TextBlock.Style>
@@ -128,7 +172,6 @@
                                         </Style>
                                     </TextBlock.Style>
                                 </TextBlock>
-                                <!-- Segment button -->
                                 <Button Cursor="Hand" BorderThickness="0" Background="Transparent"
                                         Padding="2,0"
                                         Command="{Binding DataContext.GoToLevelCommand,
@@ -161,18 +204,73 @@
             </DockPanel>
         </Border>
 
-        <!-- ═══════════════════════════ CANVAS ══════════════════════════════ -->
-        <nodify:NodifyEditor x:Name="Editor"
-                             Grid.Row="2"
-                             ItemsSource="{Binding Nodes}"
+        <!-- ══════════════════════════ SIDEBAR ═══════════════════════════════ -->
+        <Border x:Name="SidebarBorder"
+                Grid.Row="2" Grid.Column="0"
+                MaxWidth="200" Width="200"
+                HorizontalAlignment="Left"
+                Background="#13131F"
+                BorderBrush="#2A2A45" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Header -->
+                <Border DockPanel.Dock="Top" Background="#1A1A2E" Padding="10,8">
+                    <TextBlock Text="📦 Máquinas" FontSize="13" FontWeight="SemiBold"
+                               Foreground="#9EB4FF" VerticalAlignment="Center"/>
+                </Border>
+
+                <!-- Search box -->
+                <Border DockPanel.Dock="Top" Padding="8,6"
+                        BorderBrush="#2A2A45" BorderThickness="0,0,0,1">
+                    <Border Background="#1E1E35" CornerRadius="4"
+                            BorderBrush="#3A3A5C" BorderThickness="1">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="🔍" FontSize="11"
+                                       Foreground="#666688" Margin="6,0,4,0"
+                                       VerticalAlignment="Center"/>
+                            <TextBox x:Name="SearchBox"
+                                     Text="{Binding Library.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="#D0D0E8" CaretBrush="#9EB4FF"
+                                     FontSize="12" Padding="0,4"
+                                     VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                </Border>
+
+                <!-- Machine list (drag source) -->
+                <ListBox x:Name="MachineList"
+                         ItemsSource="{Binding Library.Filtered}"
+                         ItemContainerStyle="{StaticResource LibraryItemStyle}"
+                         Background="Transparent" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         PreviewMouseLeftButtonDown="MachineList_PreviewMouseLeftButtonDown"
+                         PreviewMouseMove="MachineList_PreviewMouseMove">
+                    <ListBox.Template>
+                        <ControlTemplate TargetType="ListBox">
+                            <ScrollViewer Focusable="False" Padding="0">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </ControlTemplate>
+                    </ListBox.Template>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══════════════════════════ CANVAS ═══════════════════════════════ -->
+        <Grid Grid.Row="2" Grid.Column="1">
+            <nodify:NodifyEditor x:Name="Editor"
+                                 ItemsSource="{Binding Nodes}"
                              Connections="{Binding Connections}"
                              Background="#0D0D1A"
                              GridCellSize="20"
                              ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
                              ConnectionCompletedCommand="{Binding ConnectionCompletedCommand}"
-                             RemoveConnectionCommand="{Binding RemoveConnectionCommand}">
+                             RemoveConnectionCommand="{Binding RemoveConnectionCommand}"
+                             AllowDrop="True"
+                             Drop="Editor_Drop"
+                             DragOver="Editor_DragOver">
 
-            <!-- Node position + double-click to enter a FactoryGroupNode -->
+            <!-- Node position + double-click to enter FactoryGroupNode -->
             <nodify:NodifyEditor.ItemContainerStyle>
                 <Style TargetType="{x:Type nodify:ItemContainer}">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}"/>
@@ -180,7 +278,7 @@
                 </Style>
             </nodify:NodifyEditor.ItemContainerStyle>
 
-            <!-- Connection wire: color by usage ratio, tooltip with flow info -->
+            <!-- Connection wire -->
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate DataType="{x:Type vm:ConnectionViewModel}">
                     <nodify:Connection Source="{Binding Source.Anchor, Mode=OneWay}"
@@ -200,6 +298,34 @@
                     </nodify:Connection>
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>
-        </nodify:NodifyEditor>
+            </nodify:NodifyEditor>
+
+            <!-- ── Persistent Sidebar Toggle ── -->
+            <Button x:Name="SidebarToggleBtn"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="0,10,0,0" Panel.ZIndex="100"
+                    Width="20" Height="40"
+                    Click="SidebarToggle_Click"
+                    Cursor="Hand"
+                    ToolTip="Colapsar panel">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="#1A1A2E" 
+                                CornerRadius="0,4,4,0" 
+                                BorderBrush="#2A2A45" BorderThickness="0,1,1,1">
+                            <TextBlock x:Name="Txt" Text="{TemplateBinding Content}" Foreground="#9EB4FF" 
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       FontSize="10"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2A2A45"/>
+                                <Setter TargetName="Txt" Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
     </Grid>
 </Window>

@@ -3,6 +3,10 @@ using System.Windows;
 using System.Windows.Input;
 using SatisfactoryManagerApp.Graph;
 using SatisfactoryManagerApp.Graph.Nodes;
+using SatisfactoryManagerApp.Models;
+using Microsoft.Win32;
+using System.IO;
+using System.Text.Json;
 
 namespace SatisfactoryManagerApp.ViewModels
 {
@@ -81,6 +85,12 @@ namespace SatisfactoryManagerApp.ViewModels
         /// <summary>Adds a new FactoryGroupNode to the current level.</summary>
         public ICommand AddGroupCommand { get; }
 
+        public ICommand SaveProjectCommand { get; }
+        public ICommand LoadProjectCommand { get; }
+
+        /// <summary>Left-sidebar machine library (search + filterable list).</summary>
+        public MachineLibraryViewModel Library { get; } = new();
+
         /// <summary>
         /// Nodify 7: invoked when the user finishes dragging a connection wire.
         /// Parameter is Tuple&lt;object, object&gt; where Item1=source port VM, Item2=target port VM.
@@ -107,6 +117,8 @@ namespace SatisfactoryManagerApp.ViewModels
             RecalculateCommand = new RelayCommand(Recalculate);
             AddMachineCommand = new RelayCommand(AddMachine);
             AddGroupCommand = new RelayCommand(AddGroup);
+            SaveProjectCommand = new RelayCommand(SaveProject);
+            LoadProjectCommand = new RelayCommand(LoadProject);
 
             // Nodify 7 MVVM commands for connection lifecycle
             ConnectionCompletedCommand = new RelayCommand<Tuple<object, object>>(OnConnectionCompleted);
@@ -229,6 +241,22 @@ namespace SatisfactoryManagerApp.ViewModels
             RegisterNode(group);
         }
 
+        /// <summary>
+        /// Called by the DragDrop handler in MainWindow when the user drops a
+        /// MachineLibraryItem onto the canvas.
+        /// Creates a new MachineNode at the given canvas position.
+        /// </summary>
+        public void AddMachineByName(string machineName, double canvasX, double canvasY)
+        {
+            var node = new MachineNode
+            {
+                Name = machineName,
+                X = canvasX,
+                Y = canvasY
+            };
+            RegisterNode(node);
+        }
+
         private void RegisterNode(NodeModel node)
         {
             // Assign parent group if navigated inside one
@@ -310,6 +338,76 @@ namespace SatisfactoryManagerApp.ViewModels
             if (cvm is null) return;
             _allConnections.Remove(cvm.Model);
             Connections.Remove(cvm);
+        }
+
+        // ── Serialization ─────────────────────────────────────────────────────
+
+        private void SaveProject()
+        {
+            var sfd = new SaveFileDialog
+            {
+                Filter = "Satisfactory Project (*.smj)|*.smj|JSON files (*.json)|*.json",
+                FileName = "mi_fabrica.smj"
+            };
+
+            if (sfd.ShowDialog() == true)
+            {
+                try
+                {
+                    var data = new SaveData
+                    {
+                        Nodes = _allNodes,
+                        Connections = _allConnections
+                    };
+
+                    var options = new JsonSerializerOptions { WriteIndented = true };
+                    string json = JsonSerializer.Serialize(data, options);
+                    File.WriteAllText(sfd.FileName, json);
+
+                    MessageBox.Show("Proyecto guardado correctamente.", "Guardar", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al guardar: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private void LoadProject()
+        {
+            var ofd = new OpenFileDialog
+            {
+                Filter = "Satisfactory Project (*.smj)|*.smj|JSON files (*.json)|*.json"
+            };
+
+            if (ofd.ShowDialog() == true)
+            {
+                try
+                {
+                    string json = File.ReadAllText(ofd.FileName);
+                    var data = JsonSerializer.Deserialize<SaveData>(json);
+
+                    if (data != null)
+                    {
+                        _allNodes.Clear();
+                        _allNodes.AddRange(data.Nodes);
+                        _allConnections.Clear();
+                        _allConnections.AddRange(data.Connections);
+
+                        // Reset internal state
+                        _navigationStack.Clear();
+                        UpdateBreadcrumb();
+                        RefreshVisibleLevel();
+                        Recalculate();
+
+                        MessageBox.Show("Proyecto cargado correctamente.", "Cargar", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al cargar: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
         }
     }
 }

@@ -50,7 +50,12 @@ namespace SatisfactoryManagerApp.Graph.Nodes
             MachineType is null ? 0.0
             : MachineType.PowerConsumption * Math.Pow(OverclockFactor, 1.321928);
 
-        // ── Constructor ───────────────────────────────────────────────────────
+        // ── Constructors ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Constructor sin parámetros para el serializador JSON.
+        /// </summary>
+        public MachineNode() { }
 
         /// <summary>
         /// Crea un MachineNode y genera automáticamente sus puertos
