@@ -97,14 +97,67 @@
         <Border Grid.Row="1" Background="#161625" Padding="10,4"
                 BorderBrush="#2A2A45" BorderThickness="0,0,0,1">
             <DockPanel>
+                <!-- Back button (one level) -->
                 <Button DockPanel.Dock="Right"
                         Content="◄ Volver"
                         Command="{Binding GoBackCommand}"
                         Style="{StaticResource BackButton}"
                         Margin="8,0,0,0"/>
-                <TextBlock Text="{Binding BreadcrumbPath}"
-                           Foreground="#9E9E9E" FontSize="12"
-                           VerticalAlignment="Center"/>
+
+                <!-- Clickable breadcrumb: each segment navigates directly to that level -->
+                <ItemsControl ItemsSource="{Binding BreadcrumbItems}" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:BreadcrumbItem}">
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Separator › (hidden before first item via PreviousData trick) -->
+                                <TextBlock Text=" › " Foreground="#555577" FontSize="12"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource PreviousData}}"
+                                                             Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <!-- Segment button -->
+                                <Button Cursor="Hand" BorderThickness="0" Background="Transparent"
+                                        Padding="2,0"
+                                        Command="{Binding DataContext.GoToLevelCommand,
+                                                  RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <TextBlock Text="{Binding Label}"
+                                                       FontSize="12" VerticalAlignment="Center"
+                                                       Cursor="Hand">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#9EB4FF"/>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Foreground" Value="White"/>
+                                                                <Setter Property="TextDecorations" Value="Underline"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </DockPanel>
         </Border>
 
@@ -115,13 +168,15 @@
                              Connections="{Binding Connections}"
                              Background="#0D0D1A"
                              GridCellSize="20"
+                             ViewportLocation="{Binding ViewportLocation, Mode=TwoWay}"
                              ConnectionCompletedCommand="{Binding ConnectionCompletedCommand}"
                              RemoveConnectionCommand="{Binding RemoveConnectionCommand}">
 
-            <!-- Bind node position to Location property -->
+            <!-- Node position + double-click to enter a FactoryGroupNode -->
             <nodify:NodifyEditor.ItemContainerStyle>
                 <Style TargetType="{x:Type nodify:ItemContainer}">
                     <Setter Property="Location" Value="{Binding Location, Mode=TwoWay}"/>
+                    <EventSetter Event="MouseDoubleClick" Handler="ItemContainer_MouseDoubleClick"/>
                 </Style>
             </nodify:NodifyEditor.ItemContainerStyle>
 

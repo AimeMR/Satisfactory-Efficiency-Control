@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using SatisfactoryManagerApp.Graph;
 using SatisfactoryManagerApp.Graph.Nodes;
@@ -38,6 +39,23 @@ namespace SatisfactoryManagerApp.ViewModels
             private set => SetField(ref _breadcrumbPath, value);
         }
 
+        /// <summary>
+        /// Clickable breadcrumb segments exposed to the breadcrumb ItemsControl.
+        /// Each item carries a label and the group it represents (null = root).
+        /// </summary>
+        public ObservableCollection<BreadcrumbItem> BreadcrumbItems { get; } = new();
+
+        /// <summary>
+        /// Bound TwoWay to NodifyEditor.ViewportLocation so we can reset the
+        /// camera to (0,0) whenever the user navigates to a different level.
+        /// </summary>
+        private Point _viewportLocation;
+        public Point ViewportLocation
+        {
+            get => _viewportLocation;
+            set => SetField(ref _viewportLocation, value);
+        }
+
         // ── Visible collections (bound to NodifyEditor) ───────────────────────
 
         /// <summary>Nodes visible in the current level of the editor.</summary>
@@ -75,6 +93,9 @@ namespace SatisfactoryManagerApp.ViewModels
         /// </summary>
         public ICommand RemoveConnectionCommand { get; }
 
+        /// <summary>Navigates directly to any ancestor level when the user clicks a breadcrumb segment.</summary>
+        public ICommand GoToLevelCommand { get; }
+
         // ── Constructor ───────────────────────────────────────────────────────
 
         public EditorViewModel()
@@ -90,6 +111,7 @@ namespace SatisfactoryManagerApp.ViewModels
             // Nodify 7 MVVM commands for connection lifecycle
             ConnectionCompletedCommand = new RelayCommand<Tuple<object, object>>(OnConnectionCompleted);
             RemoveConnectionCommand = new RelayCommand<ConnectionViewModel>(DisconnectPorts);
+            GoToLevelCommand = new RelayCommand<BreadcrumbItem>(GoToLevel);
 
             // Start at root with an empty canvas
             RefreshVisibleLevel();
@@ -115,13 +137,22 @@ namespace SatisfactoryManagerApp.ViewModels
 
         private void UpdateBreadcrumb()
         {
+            // Plain text path (still used for window title / tooltip)
             if (_navigationStack.Count == 0)
             {
                 BreadcrumbPath = "Fábrica principal";
-                return;
             }
-            var parts = _navigationStack.Reverse().Select(g => g.Name);
-            BreadcrumbPath = "Fábrica principal > " + string.Join(" > ", parts);
+            else
+            {
+                var parts = _navigationStack.Reverse().Select(g => g.Name);
+                BreadcrumbPath = "Fábrica principal > " + string.Join(" > ", parts);
+            }
+
+            // Clickable breadcrumb items (root first)
+            BreadcrumbItems.Clear();
+            BreadcrumbItems.Add(new BreadcrumbItem("Fábrica principal", null));
+            foreach (var group in _navigationStack.Reverse())
+                BreadcrumbItems.Add(new BreadcrumbItem(group.Name, group));
         }
 
         // ── Refresh visible level ─────────────────────────────────────────────
@@ -134,6 +165,9 @@ namespace SatisfactoryManagerApp.ViewModels
         {
             Nodes.Clear();
             Connections.Clear();
+
+            // Reset camera so the user doesn't appear at a blank area
+            ViewportLocation = new Point(0, 0);
 
             IEnumerable<NodeModel> visibleNodes = _navigationStack.Count == 0
                 ? _allNodes.Where(n => n.ParentGroupId == null)
@@ -211,6 +245,31 @@ namespace SatisfactoryManagerApp.ViewModels
         }
 
         // ── Public API (called by Nodify's ConnectionCompletedCommand / RemoveConnectionCommand) ─
+
+        /// <summary>
+        /// Navigates directly to a specific ancestor level via breadcrumb click.
+        /// Pops the navigation stack until the target group is on top
+        /// (or until root, if group == null).
+        /// </summary>
+        private void GoToLevel(BreadcrumbItem? item)
+        {
+            if (item is null) return;
+
+            if (item.Group is null)
+            {
+                // Navigate all the way back to root
+                _navigationStack.Clear();
+            }
+            else
+            {
+                // Pop until the target group is the current context
+                while (_navigationStack.Count > 0 && _navigationStack.Peek() != item.Group)
+                    _navigationStack.Pop();
+            }
+
+            UpdateBreadcrumb();
+            RefreshVisibleLevel();
+        }
 
         /// <summary>
         /// Called by Nodify's ConnectionCompletedCommand.
