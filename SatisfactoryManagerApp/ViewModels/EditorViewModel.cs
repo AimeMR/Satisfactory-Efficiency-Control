@@ -81,6 +81,9 @@ namespace SatisfactoryManagerApp.ViewModels
         /// <summary>Adds a new FactoryGroupNode to the current level.</summary>
         public ICommand AddGroupCommand { get; }
 
+        /// <summary>Left-sidebar machine library (search + filterable list).</summary>
+        public MachineLibraryViewModel Library { get; } = new();
+
         /// <summary>
         /// Nodify 7: invoked when the user finishes dragging a connection wire.
         /// Parameter is Tuple&lt;object, object&gt; where Item1=source port VM, Item2=target port VM.
@@ -227,6 +230,22 @@ namespace SatisfactoryManagerApp.ViewModels
         {
             var group = new FactoryGroupNode { Name = "Nuevo Grupo", X = 200, Y = 200 };
             RegisterNode(group);
+        }
+
+        /// <summary>
+        /// Called by the DragDrop handler in MainWindow when the user drops a
+        /// MachineLibraryItem onto the canvas.
+        /// Creates a new MachineNode at the given canvas position.
+        /// </summary>
+        public void AddMachineByName(string machineName, double canvasX, double canvasY)
+        {
+            var node = new MachineNode
+            {
+                Name = machineName,
+                X = canvasX,
+                Y = canvasY
+            };
+            RegisterNode(node);
         }
 
         private void RegisterNode(NodeModel node)
