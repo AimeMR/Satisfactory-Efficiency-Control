@@ -1,5 +1,7 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 using Nodify;
 using SatisfactoryManagerApp.ViewModels;
 
@@ -11,10 +13,37 @@ namespace SatisfactoryManagerApp
         private Point _dragStartPoint;
         private MachineLibraryItem? _dragItem;
 
+        // ── Sidebar state ─────────────────────────────────────────────────────
+        private bool _sidebarExpanded = true;
+        private const double SidebarExpandedWidth = 200;
+
         public MainWindow()
         {
             InitializeComponent();
             DataContext = new EditorViewModel();
+
+            // Set initial MaxWidth so animation starts from a known value
+            SidebarBorder.MaxWidth = SidebarExpandedWidth;
+        }
+
+        // ── Sidebar toggle ────────────────────────────────────────────────────
+
+        private void SidebarToggle_Click(object sender, RoutedEventArgs e)
+        {
+            _sidebarExpanded = !_sidebarExpanded;
+
+            // DoubleAnimation on MaxWidth collapses/expands smoothly
+            var anim = new DoubleAnimation
+            {
+                To = _sidebarExpanded ? SidebarExpandedWidth : 0,
+                Duration = TimeSpan.FromMilliseconds(220),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            SidebarBorder.BeginAnimation(MaxWidthProperty, anim);
+
+            // Flip the arrow icon
+            SidebarToggleBtn.Content = _sidebarExpanded ? "❮" : "❯";
+            SidebarToggleBtn.ToolTip = _sidebarExpanded ? "Colapsar panel" : "Expandir panel";
         }
 
         // ── Double-click: enter FactoryGroupNode ──────────────────────────────
@@ -48,7 +77,6 @@ namespace SatisfactoryManagerApp
             if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance &&
                 Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
 
-            // Start the WPF drag operation — DragDrop data is the library item itself
             DragDrop.DoDragDrop(MachineList, _dragItem, DragDropEffects.Copy);
             _dragItem = null;
         }
@@ -68,7 +96,6 @@ namespace SatisfactoryManagerApp
             if (e.Data.GetData(typeof(MachineLibraryItem)) is not MachineLibraryItem item) return;
             if (DataContext is not EditorViewModel vm) return;
 
-            // Convert drop position from editor-local space → canvas (viewport) space
             var editorPos = e.GetPosition(Editor);
             var canvasPos = Editor.ViewportTransform.Inverse.Transform(editorPos);
 
