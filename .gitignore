@@ -416,3 +416,21 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# =========================
+# Custom rules for Satisfactory Manager
+# =========================
+
+# SQLite Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Rider / IntelliJ IDEA specific files (if you or a contributor uses it)
+.idea/
+*.sln.iml
+
+# Mac OS specific files (if someone clones it on a Mac)
+.DS_Store
