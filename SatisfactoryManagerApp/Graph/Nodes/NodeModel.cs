@@ -1,4 +1,5 @@
 using SatisfactoryManagerApp.Graph.Ports;
+using System.Text.Json.Serialization;
 
 namespace SatisfactoryManagerApp.Graph.Nodes
 {
@@ -6,6 +7,8 @@ namespace SatisfactoryManagerApp.Graph.Nodes
     /// Clase base para todos los elementos que se pueden colocar en el lienzo.
     /// Define la estructura mínima que cualquier nodo del grafo debe tener.
     /// </summary>
+    [JsonDerivedType(typeof(MachineNode), typeDiscriminator: "machine")]
+    [JsonDerivedType(typeof(FactoryGroupNode), typeDiscriminator: "group")]
     public abstract class NodeModel
     {
         /// <summary>Identificador único del nodo.</summary>

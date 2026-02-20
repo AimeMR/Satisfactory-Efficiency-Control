@@ -130,7 +130,14 @@
                 <Button Content="＋ Grupo"    Command="{Binding AddGroupCommand}"
                         Style="{StaticResource ToolbarButton}" Margin="0,0,8,0"/>
                 <Button Content="⟳ Recalcular" Command="{Binding RecalculateCommand}"
-                        Style="{StaticResource AccentButton}"/>
+                        Style="{StaticResource AccentButton}" Margin="0,0,24,0"/>
+
+                <Separator Background="#2A2A45" Margin="0,2,8,2"/>
+
+                <Button Content="💾 Guardar" Command="{Binding SaveProjectCommand}"
+                        Style="{StaticResource ToolbarButton}" Margin="0,0,8,0"/>
+                <Button Content="📂 Cargar"  Command="{Binding LoadProjectCommand}"
+                        Style="{StaticResource ToolbarButton}"/>
             </StackPanel>
         </Border>
 
